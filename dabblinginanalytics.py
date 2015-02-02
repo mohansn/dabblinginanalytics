@@ -84,7 +84,6 @@ class GR_OAuth_Authorized (webapp2.RequestHandler):
                 self.response.write (fp.read())
                 fp.close ()
         else:
-            
             p = {"key":session.access_token, "format":"xml"}
             userid, username = get_user (session, p)
 
@@ -95,7 +94,7 @@ class GR_OAuth_Authorized (webapp2.RequestHandler):
             self.response.write ("<div style=\"color:green\">")
             self.response.write ("You, <b>" + username + "</b> have " + fc + " friends")
             self.response.write ("</div>")
-            
+
             self.response.write ("<div style=\"color:blue\">")
             self.response.write ("<ol>")
             for f in friends:
