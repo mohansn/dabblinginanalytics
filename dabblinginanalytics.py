@@ -6,6 +6,8 @@ import os
 import json
 from lxml import objectify
 from math import ceil
+#from numpy import corrcoef
+from utils import is_int, pearson_def
 
 CONSUMER_KEY, CONSUMER_SECRET = [line.strip (os.linesep) for line in open ('goodreads_api_keys.txt', 'r').readlines()]
 
@@ -38,6 +40,11 @@ def get_user (session, param):
     authuser = session.get ("https://www.goodreads.com/api/auth_user", params=param)
     treeuser = objectify.fromstring(authuser.content)
     return treeuser.user.attrib['id'], treeuser.user.name
+
+def get_user_info (session, param):
+    userinfo_r = session.get ('https://www.goodreads.com/user/show/' + str(param['id']), params = param)
+    userinfo = objectify.fromstring (userinfo_r.content)
+    return userinfo
 
 def get_all_friends (session, param):
     current_page = 1 # Initially
@@ -72,6 +79,24 @@ def get_all_friends (session, param):
 
     return friends, friendcount
 
+# https://www.goodreads.com/book/compatibility_results?utf8=%E2%9C%93&id=17163237
+def compare_user (their_id, session, param):
+    param ['id'] = their_id
+    comparison = session.get ('https://www.goodreads.com/user/compare/' + str(their_id), params=param)
+    ctree = objectify.fromstring (comparison.content)
+#    return comparison
+
+    review_pairs = [ (review.your_review.rating, review.their_review.rating) for review in ctree.compare.reviews.getchildren()]
+
+    # exclude pairs where either or both have not entered a review (but have put it on a shelf/shelves)
+    rp_int = [(y,t) for (y,t) in review_pairs if (is_int(y) and is_int (t))]
+
+    your_reviews = [x[0] for x in rp_int]
+    their_reviews = [x[1] for x in rp_int]
+    similarity = pearson_def (your_reviews, their_reviews)
+
+    return comparison, their_id, similarity
+
 class GR_OAuth_Authorized (webapp2.RequestHandler):
     def get (self):
         global request_token
@@ -100,6 +125,22 @@ class GR_OAuth_Authorized (webapp2.RequestHandler):
             for f in friends:
                 self.response.write ("<li>" + f['name'] + "</li>")
             self.response.write ("</ol>")
+            self.response.write ("</div>")
+            comp, tid, sim = compare_user (22517129, session, p)
+            self.response.write ("<div style=\"color:red\">")
+            self.response.write (comp.content)
+            self.response.write ("</div>")
+            for f in friends:
+                comp, tid, sim = compare_user (f['id'], session, p)
+                f['sim'] = sim
+
+            friends.sort(key=lambda user: user['sim'], reverse=True)
+            
+            self.response.write ("<div style=\"color:green\">")
+            for f in friends:
+                p ['id'] = f['id']
+                user = get_user_info (session, p)
+                self.response.write ("<p> <a href=\"" + user.user.link +"\">" + str(f['name']) + "</a><img src="+ user.user.image_url.text + "/></p>")
             self.response.write ("</div>")
             self.response.write ("</body></html>")
 
