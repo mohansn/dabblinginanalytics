@@ -53,10 +53,9 @@ $(document).ready (function () {
                                 if (fids == []) {
                                     $('.friends').html ("No friends to show");
                                 } else {
-                                    var info = JSON.parse (data);
-                                    for (item in info) {
-                                        var friend = JSON.parse (item);
-                                        $('.friends ul').append ("<li>" + friend.name + ", " + friend.id + "  </li>");
+                                    friends = fids.map (JSON.parse);
+                                    for (var i = 0; i < friends.length; i++) {
+                                        $('.friends ul').append ("<li>" + friends[i].name + ", " + friends[i].id + "  </li>");
                                     }
                                 }
                             },
